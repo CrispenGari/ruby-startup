@@ -59,8 +59,27 @@ while  i < 5
   i += 1
 end
 
-# The flip flop operator .. is used between two conditions in a conditional statement:
+### Write a program that detemines months that end with 31, 30 or 28
 
+def getDays(month)
+  case month
+  when 1, 3, 5, 7, 8, 10, 12
+    puts 31
+  when 2
+    puts 28
+  when  4, 6, 9, 11
+    puts 30
+  else
+    puts "Invalid month number...."
+  end
+end
+
+puts "*"*10
+for m in [2, 15, 8, 3]
+  getDays(m)
+end
+puts "*"*10
+# The flip flop operator .. is used between two conditions in a conditional statement:
 (1..10).select do |i|
   a = i if (i==3) .. (i==8)
   print(a)
