@@ -1,8 +1,14 @@
 
+puts "FIBONACCI SERIES GENERATOR"
 
-require 'date_core'
+print "Enter a number: "
+max = gets.chomp.to_i
 
-for i in (0...10)
-  sleep(1)
-  print("\r#{i}")
+start = 0
+fibo = 1
+while fibo < max
+  print "#{fibo}, "
+  start, fibo = fibo, fibo + start
 end
+
+
