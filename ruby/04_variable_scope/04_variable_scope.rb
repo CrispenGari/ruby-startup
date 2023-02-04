@@ -1,15 +1,9 @@
-class Dog
-    @@name = "hello"
-    def self.name
-        @@name
-    end
-    def full_name
-        "#{@@name} #{@@name}"
-    end
-end
+a = 18
+def hello
+    a = 10
+    puts "a: #{a}"
+  end
 
-dog = Dog.new
+hello
 
-puts dog.full_name
-
-puts Dog.name
+puts "a: #{a}"

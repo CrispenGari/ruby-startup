@@ -2,6 +2,6 @@
 
 MY_CONSTANT = "Hello, world"
 
-#  constants can t=not be defined in a methd
+#  constants can not be defined in a methd
 
 puts MY_CONSTANT
