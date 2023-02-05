@@ -10,7 +10,7 @@ puts @arr.inspect
 # For iterator loops
 for i in 0..10
   puts i
-  end
+end
 
 # OR
 for i in 0..10 do
