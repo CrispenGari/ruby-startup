@@ -123,3 +123,46 @@ FIBONACCI SERIES GENERATOR
 Enter a number: 100
 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89,
 ```
+
+5. Write a function that checks if a string is a `palindrome` or not.
+
+```rb
+def is_palindrome(string)
+  if string.length <= 1
+    return true
+  elsif string[0] != string[-1]
+    return false
+  else
+    return is_palindrome(string[1, string.length-2])
+  end
+end
+```
+
+Or:
+
+```rb
+def is_palindrome(string)
+  return string.reverse() == string
+end
+```
+
+6. Write a function that counts the number of characters in a given string.
+
+```rb
+
+def char_count(word)
+  word = word.downcase
+  chars = ('a'..'z').to_a
+  frequence = {}
+  word.each_char do |a|
+    if a in chars
+      if frequence.key?(a)
+        frequence[a] += 1
+      else
+        frequence[a] = 1
+      end
+    end
+  end
+  return frequence
+end
+```
