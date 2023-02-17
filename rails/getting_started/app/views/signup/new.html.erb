@@ -1,11 +1,10 @@
 <h1>Sign Up</h1>
 <%= form_with model: @user, url: sign_up_path do |form| %>
-    <%= @user.errors.any? %>
     <% if @user.errors.any? %>
      <div class="alert alert-danger">
-        <%= @user.errors.full_messages.each do |message| %>
+        <% @user.errors.full_messages.each do |message| %>
             <div><%= message %></div>
-        <% end%>
+        <% end %>
      </div>
     <% end %>
    <div class="mb-3">

@@ -61,9 +61,17 @@ In the `rails 3.x` you can start the server by running the following command:
 
 ```shell
 rails s
+# or
+rails server
 ```
 
 You can open a browser at `http://127.0.0.1:3000` and you will be able to see the web application running.
+
+You can also specify the `port` number when starting the `rails` app by putting the `-p`flag for example:
+
+```shell
+rails s -p 3001
+```
 
 ### Routing
 
@@ -336,4 +344,385 @@ Without even changing the `_navbar.html.erb` we will get the same behavior as be
     </div>
   </div>
 </nav>
+```
+
+### Flashing Messages
+
+Flash messages is a way of communicating with users on your rails application. We can use a `flash` helper method in rails that behave like a ruby `hash` to communicate with users in our `rails` app. Flash messages can be set as follows:
+
+```rb
+class HomeController < ApplicationController
+  def index
+    flash[:alert] = "This is an alert message!!"
+    flash[:notice] = "This is a notice"
+  end
+end
+```
+
+Since flash messages are shown in the entire application we can then render a partial `notification` in our `application.html.erb` as follows:
+
+```html
+<body>
+  <%= render partial: "shared/navbar"%>
+  <div class="container">
+    <%= render partial: "shared/notification"%> <%= yield %>
+  </div>
+</body>
+```
+
+Now in our `shared/_notification.html.erb` we are going to flash the messages as follows
+
+```html
+<div class="alert alert-primary" role="alert"><%= flash[:notice]%></div>
+<div class="alert alert-danger" role="alert"><%= flash[:alert]%></div>
+```
+
+Flash messages can also be created as follows:
+
+```rb
+class HomeController < ApplicationController
+  def index
+    flash.alert = "This is an alert message!!"
+    flash.notice = "This is a notice"
+  end
+end
+```
+
+And also can be rendered as follows:
+
+```html
+<div class="alert alert-primary" role="alert"><%= flash.notice%></div>
+<div class="alert alert-danger" role="alert"><%= flash.alert%></div>
+```
+
+We can conditionally rendering flash messages, which means we can show flash messages when we have some. This can be done as follows
+
+```html
+<% if flash.notice %>
+<div class="alert alert-primary" role="alert"><%= flash.notice%></div>
+<% end %> <% if flash.alert%>
+<div class="alert alert-danger" role="alert"><%= flash.alert%></div>
+<% end %>
+```
+
+But you can notice that the flash messages belongs to the `home` page and when we navigate to the about page they are showing. We can disable this behavior buy allowing flash messages to be send to the user on each request in our controller as follows:
+
+```rb
+class HomeController < ApplicationController
+  def index
+    flash.now.alert = "This is an alert message!!"
+    flash.now.notice = "This is a notice"
+    # OR
+    flash.now[:alert] = "This is an alert message!!"
+    flash.now[:notice] = "This is a notice"
+  end
+end
+
+```
+
+Rails by default only allows us to flash two messages with the `alert` and `notice`. Which to me `notice` is when you want to tell users about the `success` action and `alert` is when you want to tell the users about failed actions. But sometimes we may want to create our `custom` flash messages, let's go ahead and so that. To create custom flash messages first we need to open the `controllers/application_controller.rb` file and use the `add_flash_types` to create our own types as follows:
+
+```rb
+class ApplicationController < ActionController::Base
+  add_flash_types :info, :warning, :error
+end
+```
+
+Now we can set the flash messages in the `home_controller` as follows
+
+```rb
+class HomeController < ApplicationController
+  def index
+    flash.now[:info] = "This is infomation message"
+    flash.now[:warning] = "This is warning message"
+    flash.now[:error] = "This is error message"
+  end
+end
+
+```
+
+Now in our `partial` notification.html.erb we will have the following:
+
+```html
+<div class="alert alert-error" role="alert"><%= flash[:error]%></div>
+<div class="alert alert-warning" role="alert"><%= flash[:warning]%></div>
+<div class="alert alert-info" role="alert"><%= flash[:info]%></div>
+```
+
+Sometimes we can render the flash messages as a list, which looks more clean that what we were doing as follows:
+
+```html
+<% flash.each do |type, msg| %>
+<div class="alert alert-primary" role="alert"><%= msg %></div>
+<% end %>
+```
+
+### Creating Models
+
+Now let's create a model `User` that we will use to create an authentication application and this will contains the following fields:
+
+1. email
+2. password_digest
+3. username
+
+To do that we are going to run the following command to create a database table `User`
+
+```shell
+rails generate model User email:string username:string password_digest:string
+```
+
+Now if we check our `db/migrate/xxxxx_create_users.rb` we will be able to see the following generated table
+
+```rb
+class CreateUsers < ActiveRecord::Migration[7.0]
+  def change
+    create_table :users do |t|
+      t.string :email
+      t.string :username
+      t.string :password_digest
+
+      t.timestamps
+    end
+  end
+end
+```
+
+To actually run these migrations we will run the following command:
+
+```shell
+rails db:migrate
+```
+
+We wouldn't want to store the password as plain text in our database, so we may want to use `bcrypt` to hash the password. In order for us to do that we will then go inside the `app/models/user.rb` and add the `has_secure_password` field as follows:
+
+```rb
+class User < ApplicationRecord
+  has_secure_password
+end
+```
+
+> This will allows us to confirm password and hash the password using the `password_digest` field that we have added in our database.
+
+We can interact with our database using the `rails` console. We can access the `rails` console by running the following command
+
+```shell
+rails c
+# or
+rails console
+```
+
+But before we do that we need to install `bcrypt` by opening the `Gemfile` and uncomment the `bcrypt` package and then run:
+
+```shell
+bundle install
+```
+
+Now we can reopen the rails console and use the `User.all` command to fetch all the users in the database.
+
+```shell
+irb(main):002:0> User.all
+  User Load (0.4ms)  SELECT "users".* FROM "users"
+=> []
+```
+
+Now we can go ahead and create a `User`, so the `User` model because we have added the `has_secure_password` field it will contains the following fields:
+
+1. email: `string`
+2. password_digest: `string`
+3. password: `virtual`
+4. password_confirmation: `string` `virtual`
+5. username `string`
+
+So now when creating a user we are going to pass the `email`, `password`, and `password_confirmation` as follows:
+
+```rb
+User.create({email: "email@gmail.com", password: "password", password_confirmation: "password"})
+```
+
+1. Fields validation
+
+Now we can create users but the `email` field can be null, which is something that we don't want when creating a user. So we need to make sure that the user that is being created has an `email` address as well as the `username` so we can go ahead and open the `app/models/user.db` and
+
+```rb
+class User < ApplicationRecord
+  has_secure_password
+
+  validates :email, presence: true
+  validates :username, presence: true
+end
+```
+
+The above will allows us to validate if we have an email address or username before creating the user.
+
+You can also open the `db/migrate/xxxx_create_users.rb` file and edit it as follows:
+
+```rb
+class CreateUsers < ActiveRecord::Migration[7.0]
+  def change
+    create_table :users do |t|
+      t.string :email, null: false
+      #Ex:- :null => false
+      t.string :username, null: false
+      t.string :password_digest
+
+      t.timestamps
+    end
+  end
+end
+```
+
+In order for that to work we wll need to run the following commands:
+
+```rb
+rails db:rollback
+# then
+rails db:migrate
+
+# OR you can just run
+rails db:migrate:redo # this will run both the two commands at once
+```
+
+We can validate fields for example let's validate our `email` address field we can open our `user.rb` file and add the `format` option and pass a regular expression for email address and together with the error message.
+
+```rb
+class User < ApplicationRecord
+  has_secure_password
+
+  validates :email, presence: true, format: { with: /\A[\w+\-.]+@[a-z\d\-]+(\.[a-z]+)*\.[a-z]+\z/i, message:"invalid email address" }
+  validates :username, presence: true, uniqueness: true
+end
+```
+
+We can go ahead and test creating a `user` with `invalid` email address from the rails console. But we need to restart the console by running `reload!` command and then we try:
+
+```shell
+irb(main):009:0> user = User.create({email: "user", password: "password", password_confirmation: "password", username:"usernam"})
+  TRANSACTION (0.1ms)  begin transaction
+  User Exists? (0.5ms)  SELECT 1 AS one FROM "users" WHERE "users"."username" = ? LIMIT ?  [["username", "usernam"], ["LIMIT", 1]]
+  TRANSACTION (0.1ms)  rollback transaction
+=>
+#<User:0x000001f96cbc7cc8
+...
+irb(main):010:0> user.errors
+=> #<ActiveModel::Errors [#<ActiveModel::Error attribute=email, type=invalid, options={:message=>"invalid email address", :value=>"user"}>]>
+irb(main):011:0>
+```
+
+### Creating A Sign Up Form
+
+Now we want to create a Sign Up Form for our user model, so first of all we are going to create a route for signing up. We will first open the `config/routes.rb` file and add the following code in it.
+
+```rb
+Rails.application.routes.draw do
+  root to: "home#index"
+  get '/about-us', to: "about#index", as: :about
+
+
+  # signing up
+  get '/sign_up', to: "signup#new"
+  post '/sign_up', to: "signup#create"
+
+end
+```
+
+Then after that we will then need to create a `signup_controller.rb` file in the controllers folder and add the following code in it.
+
+```rb
+class SignupController < ApplicationController
+  def new
+    @user = User.new
+  end
+  def create
+  end
+end
+```
+
+We are creating an instance of a user using `@user` instead of the `user` because we want to use it in our views. Now in the `views/signup/new.html.erb` we can go ahead and create a new for using the user model as follows
+
+```html
+<h1>Sign Up</h1>
+<%= form_with model: @user, url: sign_up_path do |form| %> <%= form.text_field
+:email, placeholder: "email@gmail.com" %> <%= form.text_field :username,
+placeholder: "username" %> <%= form.password_field :password, placeholder:
+"password" %> <%= form.password_field :password_confirmation, placeholder:
+"password" %> <%= form.submit "Sign Up"%> <% end %>
+```
+
+We cans style our template using bootstrap as follows
+
+```html
+<h1>Sign Up</h1>
+<%= form_with model: @user, url: sign_up_path do |form| %> <% if
+@user.errors.any? %>
+<div class="alert alert-danger">
+  <% @user.errors.full_messages.each do |message| %>
+  <div><%= message %></div>
+  <% end %>
+</div>
+<% end %>
+<div class="mb-3">
+  <%= form.label :email, class: "form-label"%> <%= form.text_field :email,
+  placeholder: "email@gmail.com", class: "form-control"%>
+</div>
+<div class="mb-3">
+  <%= form.label :username, class: "form-label"%> <%= form.text_field :username,
+  placeholder: "username", class: "form-control"%>
+</div>
+<div class="mb-3">
+  <%= form.label :password, class: "form-label"%> <%= form.password_field
+  :password, placeholder: "password", class: "form-control"%>
+  <div class="mb-3">
+    <%= form.label :password_confirmation, class: "form-label"%> <%=
+    form.password_field :password_confirmation, placeholder: "password", class:
+    "form-control"%>
+  </div>
+  <div class="mb-3"><%= form.submit "Sign Up", class: 'btn btn-primary'%></div>
+  <% end %>
+</div>
+```
+
+Now let's go ahead and create a `user` when the form is submitted and handle some errors. So we will open the `controllers/singup_controller.rb` file and add the following code in it.
+
+```rb
+class SignupController < ApplicationController
+  def new
+    @user = User.new
+  end
+
+  def create
+    @user = User.new(user_params)
+    if @user.save
+      flash.keep(:notice)
+      redirect_to root_path, notice: "You are logged in as #{@user[:username]}"
+    else
+      puts @user.errors.full_messages
+      render :new, status: :unprocessable_entity, content_type: "text/html"
+    end
+  end
+
+  private
+  def user_params
+    puts params
+    params.require(:user).permit(:email, :password, :password_confirmation, :username)
+  end
+end
+
+```
+
+Now we can be able to sign in and redirected to the home page, when the credentials are correct.
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
 ```
