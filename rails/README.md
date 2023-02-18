@@ -711,6 +711,395 @@ end
 
 Now we can be able to sign in and redirected to the home page, when the credentials are correct.
 
+### Session Cookies
+
+Now that we are able to create users from a form, we want to go ahead and persist the session, and check if the user is logged in or not based on the session cookies. For that we are going to modify the `create` method in our `app/controllers/signup_controller.rb` file to look as follows:
+
+```rb
+def create
+  @user = User.new(user_params)
+  if @user.save
+    session[:user_id] = @user.id
+    flash.keep(:notice)
+    redirect_to root_path, notice: "You are logged in as #{@user[:username]}"
+  else
+    puts @user.errors.full_messages
+    render :new, status: :unprocessable_entity, content_type: "text/html"
+  end
+end
+```
+
+So what is happening here is that when we successfully create a user we are going to store their id in the `session-cookie` to lookup for that user by id in any page that we may want to use the userId. On successfully authentication we are also going to redirect the user to the home page, on failure we are going to rerender the `new.html.erb` with some errors. So now in our `controllers/home_controllers.rb` in the `index` method we are going to lookup on that user as follows:
+
+```rb
+
+class HomeController < ApplicationController
+  def index
+    if session[:user_id]
+      @user = User.find_by(id: session[:user_id])
+    end
+  end
+end
+```
+
+> Note that we are using the `find_by` method instead of the `find` because `find` throws an error if it doesn't find that user.
+
+Now we will have the `user` that we can use in our `home/index.html.erb` view.
+
+```html
+<% if @user %>
+<h3>You are logged in as <%= @user.username %></h3>
+<% end %>
+```
+
+### Logging Out Users
+
+Now that we can login users and persist their authentication we can now log them out. In our `config/routes.rb` we are going to add a `delete` method as follows
+
+```rb
+Rails.application.routes.draw do
+  ...
+  delete 'logout', to: "session#destroy"
+end
+```
+
+After doing that we are then going to create a `session_controller.rb` file and add the following code in it:
+
+```rb
+class SessionController < ApplicationController
+  def destroy
+    session[:user_id] = nil
+    flash.keep(:notice)
+    redirect_to root_path, notice: "You are logged out!"
+  end
+end
+```
+
+Now that we have done that in our `home/index.html.erb` we can render a button that will allow use to run the `logout` functionality as follows:
+
+```html
+<% if @user %>
+<h3>You are logged in as <%= @user.username %></h3>
+<% end %> <%= button_to "Logout", logout_path, method: :delete, class: "btn
+btn-secondary"%>
+```
+
+### Login the user
+
+Now that we can be sign-up and logout, the next thing is to allow login of the user with available credentials. So we are going to do the same thing as we do in the sign-up so we are going to open the `routes.rb` and add the following routes
+
+```rb
+Rails.application.routes.draw do
+  # sign in
+  delete 'logout', to: "session#destroy"
+  get 'sign_in', to: "session#new"
+  post 'sign_in', to: "session#create"
+end
+
+```
+
+Now we can go ahead and open the `session_controller.rb` file and add the following code in it:
+
+```rb
+
+class SessionController < ApplicationController
+  def destroy
+    session[:user_id] = nil
+    flash.keep(:notice)
+    redirect_to root_path, notice: "You are logged out!"
+  end
+
+  def new
+  end
+
+  def create
+    user = User.find_by(email: params[:email])
+    if user.present? && user.authenticate(params[:password])
+      session[:user_id] = user.id
+      flash.keep(:notice)
+      redirect_to root_path, notice: "You are logged in as #{user[:username]}"
+    else
+      flash[:alert] = "Invalid credentials!!"
+      render :new, status: :unprocessable_entity, content_type: "text/html"
+    end
+  end
+end
+
+```
+
+In our `session/new.html.erb` we are going to go and add the following code:
+
+```htm
+<h1>Sign In</h1>
+<%= form_with url: sign_in_path do |form| %>
+<div class="mb-3">
+  <%= form.label :email, class: "form-label"%> <%= form.text_field :email,
+  placeholder: "email@gmail.com", class: "form-control"%>
+</div>
+<div class="mb-3">
+  <%= form.label :password, class: "form-label"%> <%= form.password_field
+  :password, placeholder: "password", class: "form-control"%>
+</div>
+<div class="mb-3"><%= form.submit "Sign In", class: 'btn btn-primary'%></div>
+<% end %>
+```
+
+Now we can do authentication, which is basic logging in, logging out and creating accounts.
+
+### Getting the User
+
+Now that the authentication flow is working let's go ahead and learn how we can get the currently logged in user in any `controller` and in any `view` so we are going to create a `current.rb` file in the `app/models` folder and add the following code in it:
+
+```rb
+class Current < ActiveSupport::CurrentAttributes
+  attribute :user
+end
+```
+
+This class allows us to access user using the `Current` from any view or `controller`.
+
+Next let's go ahead and edit the `controllers/application_controller.rb` and add the following code in it.
+
+```rb
+class ApplicationController < ActionController::Base
+  add_flash_types :info, :warning, :error
+  before_action :set_current_user
+
+  def set_current_user
+    if session[:user_id]
+      Current.user = User.find_by(id: session[:user_id])
+    end
+  end
+end
+```
+
+So rails exposes to us the `before_action` property which allows us to run a method in each and every request that we are going to make in all the actions. Now in our `home_controller.rb` we can remove everything under the `index` method as follows:
+
+```rb
+class HomeController < ApplicationController
+  def index
+  end
+end
+```
+
+Now we can then go ahead and change our `_navbar.html.erb` and check if the user is `logged` in or `not` and render stuff conditionally as follows:
+
+```rb
+<nav class="navbar navbar-expand-lg bg-light">
+  <div class="container-fluid">
+  <%= link_to "Navbar", root_path, class: "navbar-brand" %>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+        <%= link_to "Home", root_path, class: "nav-link active" %>
+        </li>
+        <li class="nav-item">
+        <%= link_to "About", about_path, class: "nav-link" %>
+        </li>
+      </ul>
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+      <% if Current.user %>
+        <li class="nav-item">
+          <span><%= Current.user.username %></span>
+        </li>
+        <%= button_to "Logout", logout_path, method: :delete, class: "btn btn-secondary btn-sm"%>
+      <% else %>
+        <li class="nav-item">
+          <%= link_to "Sign In", sign_in_path, class: "nav-link" %>
+        </li>
+        <li class="nav-item">
+          <%= link_to "Sign Up", sign_up_path, class: "nav-link" %>
+        </li>
+      <% end %>
+      </ul>
+    </div>
+  </div>
+</nav>
+```
+
+### Editing Password
+
+Next we are going to create the functionality of editing password. First we will need to open the `config/routes.rb` and add two routes for password as follows:
+
+```rb
+Rails.application.routes.draw do
+  ...
+  # password
+  get 'password', to: "passwords#edit", as: :edit_password
+  patch 'password', to: "passwords#update"
+end
+```
+
+Next we are then going to create a `passwords_controller.rb` file in the controllers folder and add the following code in it:
+
+```rb
+
+```
+
+The `require_user_logged_in!` allows us to check if we are authenticated or not before performing the `passwords` action and we are defining it in the `application_controller.rb` file as follows:
+
+```rb
+class ApplicationController < ActionController::Base
+  ....
+  def require_user_logged_in!
+    flash.keep(:alert)
+    redirect_to sign_in_path, alert: "You need to be authenticated!!" if Current.user.nil?
+  end
+end
+
+```
+
+Now in our `_navbar.html.erb` we want to say when we click the `username` we go to the `edit_password` route so we need to modify it to look as follows
+
+```rb
+<% if Current.user %>
+  <li class="nav-item">
+    <%= link_to Current.user.username, edit_password_path, class: "nav-link"%>
+  </li>
+  <%= button_to "Logout", logout_path, method: :delete, class: "btn btn-secondary btn-sm"%>
+<% else %>
+  <li class="nav-item">
+    <%= link_to "Sign In", sign_in_path, class: "nav-link" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "Sign Up", sign_up_path, class: "nav-link" %>
+  </li>
+<% end %>
+```
+
+Then next we are going to create a file in our `views` called `passwords/edit.htm.erb` and add the following code in it:
+
+```rb
+
+<h1>Change Password</h1>
+<%= form_with model: Current.user, url: edit_password_path do |form| %>
+    <% if form.object.errors.any? %>
+     <div class="alert alert-danger">
+        <% form.object.errors.full_messages.each do |message| %>
+            <div><%= message %></div>
+        <% end %>
+     </div>
+    <% end %>
+    <div class="mb-3">
+        <%= form.label :password, class: "form-label"%>
+        <%= form.password_field :password, placeholder: "password", class: "form-control"%>
+    <div class="mb-3">
+        <%= form.label :password_confirmation, class: "form-label"%>
+        <%= form.password_field :password_confirmation, placeholder: "password", class: "form-control"%>
+    </div>
+    <div class="mb-3">
+        <%= form.submit "Update Password", class: 'btn btn-primary'%>
+    </div>
+<% end %>
+
+```
+
+In our `password_controller.rb` we are going to add the following code that will handle the update password action.
+
+```rb
+
+class PasswordsController < ApplicationController
+  before_action :require_user_logged_in!
+
+  def edit
+  end
+
+  def update
+    if Current.user.update(password_params)
+      flash.keep(:notice)
+      redirect_to root_path, notice: "Password has been updated!!"
+    else
+      render :edit, status: :unprocessable_entity, content_type: "text/html"
+    end
+  end
+
+  private
+  def password_params
+    params.require(:user).permit(:password, :password_confirmation)
+  end
+end
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
+```rb
+
+```
+
 ```rb
 
 ```
