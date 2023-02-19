@@ -1024,13 +1024,64 @@ end
 
 ```
 
+### Password Resets
+
+In this setion we are going to learn how we can implement the password reset functionality based on the authentication flow that we have been following. First we need to open our `config/routes.rb` file and add the routes for reseting password as follows:
+
 ```rb
 
 ```
 
 ```rb
+Rails.application.routes.draw do
+  ...
+  # reset password
+  get 'password/reset', to: "password_resets#new"
+  post 'password/reset', to: "password_resets#create"
 
+end
 ```
+
+First we need a link that shows that we forgot the password in the `session/new.html.erb` and have the following code in it:
+
+```html
+<h1>Sign In</h1>
+<%= form_with url: sign_in_path do |form| %>
+<div class="mb-3">
+  <%= form.label :email, class: "form-label"%> <%= form.text_field :email,
+  placeholder: "email@gmail.com", class: "form-control"%>
+</div>
+<div class="mb-3">
+  <%= form.label :password, class: "form-label"%> <%= form.password_field
+  :password, placeholder: "password", class: "form-control"%> <%= link_to
+  "Forgot Password?", password_reset_path %>
+</div>
+<div class="mb-3"><%= form.submit "Sign In", class: 'btn btn-primary'%></div>
+<% end %>
+```
+
+Next we are going to create the form that allows us to send the email in the `password_resets/new.html.erb` and add the following code in it:
+
+```html
+<h1>Forgot Password?</h1>
+<%= form_with url: password_reset_path do |form| %>
+<div class="mb-3">
+  <%= form.label :email, class: "form-label"%> <%= form.text_field :email,
+  placeholder: "email@gmail.com", class: "form-control"%>
+</div>
+<div class="mb-3">
+  <%= form.submit "Reset Password", class: 'btn btn-primary'%>
+</div>
+<% end %>
+```
+
+So we want to say when we submit the form we are going to send the email to the user with the reset password link so first we need to generate the mailer in rails by running the following command:
+
+```shell
+rails generate mailer Password reset
+```
+
+The next thing is to create our `password_resets_controller.rb` file and add the following code in it:
 
 ```rb
 
